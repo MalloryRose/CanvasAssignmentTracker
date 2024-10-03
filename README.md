@@ -20,6 +20,18 @@ A Google Apps Script project that fetches assignments and their due dates from C
    - Assignments due within a week are highlighted in green.
 4. The day of the week for each assignment is displayed in the sheet.
 
+## Finding Your Course ID
+
+To find the course ID for a course on Canvas, follow these steps:
+
+1. **Log in to Canvas**: Go to your institution's Canvas portal and log in with your credentials.
+2. **Select Your Course**: Navigate to the course for which you want to find the ID.
+3. **Check the URL**: Look at the URL in your browser's address bar. The URL will look something like this:
+
+https://yourinstitution.instructure.com/courses/521656
+
+4. **Extract the Course ID**: The number at the end of the URL (in this case, `521656`) is your course ID.
+
 ## Course IDs and Names
 
 The project allows users to input their own course IDs and names. For example:
@@ -32,6 +44,7 @@ The project allows users to input their own course IDs and names. For example:
 To use this project, follow these steps:
 
 1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yourusername/repository-name.git
-   cd repository-name
+```bash
+git clone https://github.com/yourusername/repository-name.git
+cd repository-name
+
