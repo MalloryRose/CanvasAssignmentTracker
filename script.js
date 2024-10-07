@@ -1,12 +1,12 @@
 function fetchCanvasAssignments() {
-  var token = "Bearer YOUR_API_TOKEN"; // Replace with your Canvas API access token
+  var token = "Bearer YOUR_API_KEY_HERE"; // Replace with your Canvas API access token
   
   // Define courses and their respective API URLs
   var courses = [
-    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
-    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
-    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
-    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"}
+    {id: "COURSE_ID_1", name: "Course Name 1"},
+    {id: "COURSE_ID_2", name: "Course Name 2"},
+    {id: "COURSE_ID_3", name: "Course Name 3"},
+    {id: "COURSE_ID_4", name: "Course Name 4"}
   ];
   
   // Get the active spreadsheet
