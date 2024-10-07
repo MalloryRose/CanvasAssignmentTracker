@@ -1,72 +1,187 @@
 function fetchCanvasAssignments() {
-    // Prompt user for API token
-    var token = Browser.inputBox("Enter your Canvas API Token:");
+  var token = "Bearer YOUR_API_TOKEN"; // Replace with your Canvas API access token
   
-    // Prompt user for course IDs and names
-    var courseIdsInput = Browser.inputBox("Enter course IDs separated by commas (e.g., 521656,519261):");
-    var courseNamesInput = Browser.inputBox("Enter course names separated by commas (e.g., Design 1, AI & Neuro):");
-    
-    var courseIds = courseIdsInput.split(',').map(function(id) { return id.trim(); });
-    var courseNames = courseNamesInput.split(',').map(function(name) { return name.trim(); });
+  // Define courses and their respective API URLs
+  var courses = [
+    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
+    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
+    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"},
+    {id: "YOUR_COURSE_ID", name: "COURSE_NAME"}
+  ];
   
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    
-    // Clear existing rows
-    sheet.clear();
-  
-    // Add headers
-    sheet.appendRow(["Assignment Name", "Due Date", "Course", "Day of Week"]);
-  
-    // Loop through each course ID to fetch assignments
-    courseIds.forEach(function(courseId, index) {
-      var canvasUrl = "https://ufl.instructure.com/api/v1/courses/" + courseId + "/assignments"; // Replace with your Canvas domain
-  
-      // Call Canvas API
-      var options = {
-        "method": "get",
-        "headers": {
-          "Authorization": "Bearer " + token
+  // Get the active spreadsheet
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Clear or create a "Summary" sheet
+  var summarySheet = spreadsheet.getSheetByName("Summary");
+  if (!summarySheet) {
+    summarySheet = spreadsheet.insertSheet("Summary");
+  } else {
+    summarySheet.clear(); // Clear existing data
+  }
+
+  // Add headers to the "Summary" sheet, now with Points and Completed column
+  summarySheet.appendRow(["Assignment Name", "Due Date (MM/DD/YYYY)", "Course", "Points", "Completed", "Day of the Week"]);
+
+  // Array to store all assignments for sorting later
+  var allAssignments = [];
+
+  // Loop through each course
+  courses.forEach(function(course) {
+    var canvasUrl = `https://ufl.instructure.com/api/v1/courses/${course.id}/assignments?per_page=100`;
+
+    // Create or get a sheet for the course
+    var courseSheet = spreadsheet.getSheetByName(course.name);
+    if (!courseSheet) {
+      courseSheet = spreadsheet.insertSheet(course.name);
+    } else {
+      courseSheet.clear(); // Clear existing data
+    }
+
+    // Add headers to the course-specific sheet, now with Points and Completed column
+    courseSheet.appendRow(["Assignment Name", "Due Date (MM/DD/YYYY)", "Course", "Points", "Completed", "Day of the Week"]);
+
+    // Fetch assignments from Canvas API, including handling pagination
+    fetchAllAssignments(canvasUrl, token, function(assignments) {
+      var courseAssignments = []; // Store course-specific assignments for sorting
+
+      assignments.forEach(function(assignment) {
+        if (assignment.due_at) {
+          var assignmentDate = new Date(assignment.due_at);
+          var formattedDate = formatDate(assignmentDate);
+          var points = assignment.points_possible || "N/A"; // Get points possible or "N/A" if not available
+          var completed = assignment.has_submitted_submissions ? "Yes" : "No"; // Check if assignment is submitted
+          courseAssignments.push([assignment.name, formattedDate, course.name, points, completed, ""]);
+
+          allAssignments.push({
+            name: assignment.name,
+            dueDate: assignmentDate,
+            course: course.name,
+            points: points,
+            completed: completed
+          });
         }
-      };
-  
-      try {
-        var response = UrlFetchApp.fetch(canvasUrl, options);
-        var assignments = JSON.parse(response.getContentText());
-  
-        // Populate Google Sheet with assignment data
-        assignments.forEach(function(assignment) {
-          var dueDate = new Date(assignment.due_at);
-          var dayOfWeek = Utilities.formatDate(dueDate, Session.getScriptTimeZone(), "EEEE");
-          sheet.appendRow([assignment.name, Utilities.formatDate(dueDate, Session.getScriptTimeZone(), "MM/dd/yyyy"), courseNames[index], dayOfWeek]);
-        });
-      } catch (error) {
-        Logger.log("Error fetching assignments for course ID " + courseId + ": " + error);
+      });
+
+      // Separate past-due and upcoming assignments
+      var currentDate = new Date();
+      var upcomingAssignments = courseAssignments.filter(function(a) {
+        return new Date(a[1]) >= currentDate;
+      });
+      var pastDueAssignments = courseAssignments.filter(function(a) {
+        return new Date(a[1]) < currentDate;
+      });
+
+      // Sort upcoming assignments by due date
+      upcomingAssignments.sort(function(a, b) {
+        return new Date(a[1]) - new Date(b[1]);
+      });
+
+      // Add past-due assignments to the bottom
+      pastDueAssignments.sort(function(a, b) {
+        return new Date(a[1]) - new Date(b[1]);
+      });
+      var sortedAssignments = upcomingAssignments.concat(pastDueAssignments);
+
+      // Batch write sorted assignments to course-specific sheet
+      if (sortedAssignments.length > 0) {
+        courseSheet.getRange(2, 1, sortedAssignments.length, 6).setValues(sortedAssignments);
+
+        // Batch highlight past due / upcoming assignments and set the day of the week
+        highlightCells(courseSheet, sortedAssignments);
       }
     });
-  
-    // Call function to format assignments based on due dates
-    formatAssignments(sheet);
+  });
+
+  // Sort all assignments by due date for the summary sheet
+  allAssignments.sort(function(a, b) {
+    return a.dueDate - b.dueDate;
+  });
+
+  // Separate past-due and upcoming assignments for the summary sheet
+  var upcomingAssignmentsSummary = allAssignments.filter(function(a) {
+    return a.dueDate >= new Date();
+  });
+  var pastDueAssignmentsSummary = allAssignments.filter(function(a) {
+    return a.dueDate < new Date();
+  });
+
+  // Prepare the summary data for batch writing
+  var sortedSummaryData = upcomingAssignmentsSummary.concat(pastDueAssignmentsSummary).map(function(assignment) {
+    return [assignment.name, formatDate(assignment.dueDate), assignment.course, assignment.points, assignment.completed, ""];
+  });
+
+  // Batch write all assignments to the summary sheet
+  if (sortedSummaryData.length > 0) {
+    summarySheet.getRange(2, 1, sortedSummaryData.length, 6).setValues(sortedSummaryData);
+
+    // Batch highlight past due / upcoming assignments in the summary sheet
+    highlightCells(summarySheet, sortedSummaryData);
   }
+}
+
+// Helper function to fetch all assignments across multiple pages
+function fetchAllAssignments(url, token, callback, assignments = []) {
+  var options = {
+    "method" : "get",
+    "headers" : {
+      "Authorization" : token
+    }
+  };
   
-  function formatAssignments(sheet) {
-    var range = sheet.getDataRange();
-    var values = range.getValues();
-    
-    // Highlight past due assignments in red and upcoming assignments due in a week in green
-    var today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to midnight for comparison
-    
-    for (var i = 1; i < values.length; i++) { // Skip header row
-      var dueDate = new Date(values[i][1]);
-      
-      // Check if past due
-      if (dueDate < today) {
-        sheet.getRange(i + 1, 1, 1, 4).setBackground("red");
-      }
-      // Check if due within a week
-      else if (dueDate <= new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
-        sheet.getRange(i + 1, 1, 1, 4).setBackground("green");
-      }
+  var response = UrlFetchApp.fetch(url, options);
+  var newAssignments = JSON.parse(response.getContentText());
+  assignments = assignments.concat(newAssignments);
+
+  // Check if there is a "next" link for pagination
+  var linkHeader = response.getHeaders()['Link'];
+  if (linkHeader && linkHeader.includes('rel="next"')) {
+    var nextUrl = linkHeader.match(/<([^>]+)>;\s*rel="next"/)[1];
+    fetchAllAssignments(nextUrl, token, callback, assignments);
+  } else {
+    callback(assignments);
+  }
+}
+
+// Helper function to format the date as MM/DD/YYYY
+function formatDate(date) {
+  var month = ("0" + (date.getMonth() + 1)).slice(-2);
+  var day = ("0" + date.getDate()).slice(-2);
+  var year = date.getFullYear();
+  return month + "/" + day + "/" + year;
+}
+
+// Helper function to get the day of the week from a date
+function getDayOfWeek(date) {
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getDay()];
+}
+
+// Helper function to highlight cells and populate the "Day of the Week" column
+function highlightCells(sheet, data) {
+  var currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0); // Set the current time to midnight for accurate comparison
+
+  var oneWeekFromNow = new Date();
+  oneWeekFromNow.setDate(currentDate.getDate() + 7);
+  oneWeekFromNow.setHours(23, 59, 59, 999); // Ensure the end of the week is considered for "within a week"
+
+  for (var i = 0; i < data.length; i++) {
+    var assignmentDate = new Date(data[i][1]);
+    assignmentDate.setHours(0, 0, 0, 0); // Set the assignment time to midnight for accurate comparison
+
+    var rowRange = sheet.getRange(i + 2, 1, 1, 5); // For highlighting cells (including Points and Completed columns)
+    var dayOfWeekCell = sheet.getRange(i + 2, 6); // For setting the day of the week
+
+    // Highlight past due assignments in red
+    if (assignmentDate < currentDate) {
+      rowRange.setBackground("red").setFontColor("white");
+    }
+    // Highlight assignments due today or within a week in green and set the day of the week
+    else if (assignmentDate >= currentDate && assignmentDate <= oneWeekFromNow) {
+      rowRange.setBackground("green").setFontColor("white");
+      var dayOfWeek = getDayOfWeek(assignmentDate);
+      dayOfWeekCell.setValue(dayOfWeek); // Set the day of the week for green-highlighted assignments
     }
   }
-  
+}
