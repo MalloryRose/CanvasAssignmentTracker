@@ -1,50 +1,76 @@
-# Canvas Assignments Tracker
+# Canvas Assignment Tracker
 
-A Google Apps Script project that fetches assignments and their due dates from Canvas, organizes them in Google Sheets, and highlights assignments based on their due dates. This project helps students keep track of their assignments across multiple courses efficiently.
+This Canvas Assignment Tracker is a Google Apps Script that retrieves assignment data from Canvas LMS via API and organizes the information into Google Sheets. It helps users track assignments from multiple courses, showing their due dates, points possible, and completion status. The script automatically highlights past-due assignments and upcoming assignments due within a week.
 
 ## Features
 
-- Fetches assignments from multiple Canvas courses based on user input.
-- Organizes assignments in Google Sheets with due dates formatted as `MM/DD/YYYY`.
-- Highlights past due assignments in red.
-- Highlights assignments due within a week in green.
-- Displays the day of the week for assignments due soon.
-- Automatically updates the assignment list when run.
+- **Retrieve Assignments**: Fetch assignments from Canvas LMS for multiple courses.
+- **Sorting & Filtering**: Assignments are automatically sorted by due date.
+- **Highlighting**:
+  - Past-due assignments are highlighted in red.
+  - Upcoming assignments due within a week are highlighted in green.
+- **Summary Sheet**: A consolidated view of assignments across all courses.
+- **Course-Specific Sheets**: Individual sheets for each course with detailed assignment information.
+- **Auto Day of the Week**: Automatically adds the day of the week for assignments due within the next 7 days.
 
 ## How It Works
 
-1. The user is prompted to enter their Canvas API token, course IDs, and course names.
-2. The script fetches assignments for the specified courses and populates a Google Sheet.
-3. Assignments are highlighted based on their due dates:
-   - Past due assignments are highlighted in red.
-   - Assignments due within a week are highlighted in green.
-4. The day of the week for each assignment is displayed in the sheet.
+1. **Canvas API**: The script makes authenticated API calls to Canvas to retrieve assignments for each course.
+2. **Google Sheets Integration**: Data is organized into a "Summary" sheet and individual course sheets.
+3. **Highlighting**: The script highlights assignments based on their due date and completion status.
+4. **Batch Processing**: Assignments are fetched in bulk (up to 100 per request), and pagination is handled to retrieve all assignments for a course.
+5. **Custom Columns**: Points possible, submission status, and day of the week are displayed for each assignment.
 
-## Finding Your Course ID
+## How to Use
 
-To find the course ID for a course on Canvas, follow these steps:
+### 1. Pre-requisites
+- You need access to your Canvas LMS account.
+- You'll also need an API key from Canvas (see the "Installation" section).
+- The Google Apps Script will be linked to your Google Sheets.
 
-1. **Log in to Canvas**: Go to your institution's Canvas portal and log in with your credentials.
-2. **Select Your Course**: Navigate to the course for which you want to find the ID.
-3. **Check the URL**: Look at the URL in your browser's address bar. The URL will look something like this:
+### 2. Steps to Update & Use the Script
+1. **Open Google Sheets**: Create a new or open an existing Google Sheets document.
+2. **Go to Extensions**: Navigate to `Extensions` > `Apps Script`.
+3. **Paste the Code**: Copy and paste the provided code into the script editor.
+4. **Update the API Key**: 
+    - Find the line: `var token = "Bearer YOUR_API_KEY_HERE";`
+    - Replace `"YOUR_API_KEY_HERE"` with your actual Canvas API token.
+5. **Add Course Information**: 
+    - Update the `courses` array in the script with your course IDs and names. 
+    ```js
+    var courses = [
+      {id: "COURSE_ID_1", name: "Course Name 1"},
+      {id: "COURSE_ID_2", name: "Course Name 2"},
+      ...
+    ];
+    ```
+6. **Save the Script**: Click the disk icon or `File` > `Save`.
+7. **Run the Script**: Click the `Run` button (the play icon) in the toolbar.
+8. **Authorize Access**: If prompted, allow the script to access your Google Sheets.
+9. **View Results**: The "Summary" sheet will contain all assignments, and individual course sheets will display course-specific assignment data.
 
-https://yourinstitution.instructure.com/courses/521656
-
-4. **Extract the Course ID**: The number at the end of the URL (in this case, `521656`) is your course ID.
-
-## Course IDs and Names
-
-The project allows users to input their own course IDs and names. For example:
-
-- **Course ID**: `521656`
-- **Course Name**: `Design 1`
+### 3. Updating Assignments
+- Whenever you want to update the assignments, simply run the script again by clicking the `Run` button.
 
 ## Installation
 
-To use this project, follow these steps:
+### 1. Get Your Canvas API Token
+- Log in to your Canvas account.
+- Navigate to `Account` > `Settings`.
+- Scroll down to `Approved Integrations`.
+- Click `+ New Access Token`, and generate your API key.
+- Copy the generated API key.
 
-1. **Clone the Repository**:
-```bash
-git clone https://github.com/yourusername/repository-name.git
-cd repository-name
+### 2. Install the Script
+- Open a new Google Sheets document.
+- Go to `Extensions` > `Apps Script`.
+- Replace any existing code with the provided Canvas Assignment Tracker code.
+- Update the API key in the script (see the "How to Use" section).
 
+### 3. Run the Script
+- Save the script and run it.
+- You may need to authorize the script to access your Google Sheets the first time you run it.
+
+---
+
+That's it! Now you can track your Canvas assignments directly in Google Sheets with this simple and efficient script.
